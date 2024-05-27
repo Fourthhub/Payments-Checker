@@ -1,16 +1,17 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 import logging
 from zoneinfo import ZoneInfo
 import requests
 import os
-
-zona_horaria_españa = ZoneInfo("Europe/Madrid")
-fecha_hoy = datetime.now(zona_horaria_españa)
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition,To
-
+from sendgrid.helpers.mail import Mail, To
 import azure.functions as func
 
+# Definir zona horaria de España
+zona_horaria_españa = ZoneInfo("Europe/Madrid")
+fecha_hoy = datetime.now(zona_horaria_españa)
+
+# URL para obtener el token de acceso de Hostaway
 URL_HOSTAWAY_TOKEN = "https://api.hostaway.com/v1/accessTokens"
 
 def obtener_acceso_hostaway():
@@ -42,42 +43,43 @@ def reservasSemana(token):
     }
     try:
         response = requests.get(url, headers=headers)
+        response.raise_for_status()
         data = response.json()
-        for element in data["result"]:
-            if element["paymentStatus"] != "Paid":
-                nombre = element["guestName"]
+        for element in data.get("result", []):
+            if element.get("paymentStatus") != "Paid":
+                nombre = element.get("guestName", "Nombre no disponible")
                 reservasSinPagar.append(f"{nombre} aún no ha pagado")
-
     except Exception as e:
-        raise SyntaxError(f"Error al procesar la reserva: {e}")
-    return data
+        logging.error(f"Error al procesar la reserva: {e}")
+        raise
+    return reservasSinPagar
+
 def enviarMail(reservasSinPagar):
-    cadena_unida = ' '.join(reservasSinPagar)
+    if reservasSinPagar:
+        contenido = '\n'.join(reservasSinPagar)
+    else:
+        contenido = 'No hay reservas sin pagar.'
+
     message = Mail(
         from_email='reservas@apartamentoscantabria.net',
         to_emails=[
-        To('diegoechaure@gmail.com'),
-       # To('reservas@apartamentoscantabria.net'),
-    ],
-        subject='<strong>¡Reservas Sin Pagar!</strong>',
-        html_content=f'Ojo las siguientes Reservas estan sin pagar: {cadena_unida}'
+            To('diegoechaure@gmail.com'),
+            # To('reservas@apartamentoscantabria.net'),
+        ],
+        subject='¡Reservas Sin Pagar!',
+        html_content=f'Ojo, las siguientes reservas están sin pagar:\n{contenido}'
     )
     try:
         sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
         response = sg.send(message)
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
+        logging.info(f"Correo enviado, estado: {response.status_code}")
     except Exception as e:
-         logging.error(f"Error en la función: {str(e)}")
+        logging.error(f"Error al enviar el correo: {str(e)}")
 
 def main(mytimer: func.TimerRequest) -> None:
+    if mytimer.past_due:
+        logging.info('The timer is past due!')
 
     token = obtener_acceso_hostaway()
     reservasSinPagar = reservasSemana(token)
     enviarMail(reservasSinPagar)
-
-    if mytimer.past_due:
-        logging.info('The timer is past due!')
-
-    logging.info('Python timer trigger function ran at %s', utc_timestamp)
