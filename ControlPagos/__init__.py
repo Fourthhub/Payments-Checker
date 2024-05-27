@@ -50,7 +50,9 @@ def reservasSemana(token):
                 continue
             if element.get("paymentStatus") != "Paid":
                 nombre = element.get("guestName", "Nombre no disponible")
-                reservasSinPagar.append(f"{nombre} aún no ha pagado")
+                reserva_id = element.get("id")
+                link_reserva = f"https://dashboard.hostaway.com/reservations/{reserva_id}"
+                reservasSinPagar.append(f'<li>{nombre} aún no ha pagado. <a href="{link_reserva}">Ver reserva</a></li>')
     except Exception as e:
         logging.error(f"Error al procesar la reserva: {e}")
         raise
