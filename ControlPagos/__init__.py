@@ -56,9 +56,23 @@ def reservasSemana(token):
 
 def enviarMail(reservasSinPagar):
     if reservasSinPagar:
-        contenido = '\n'.join(reservasSinPagar)
+        contenido = '<ul>' + ''.join(f'<li>{reserva}</li>' for reserva in reservasSinPagar) + '</ul>'
+        mensaje_html = f'''
+        <html>
+        <body>
+            <p><strong>Ojo, las siguientes reservas están sin pagar:</strong></p>
+            {contenido}
+        </body>
+        </html>
+        '''
     else:
-        contenido = 'No hay reservas sin pagar.'
+        mensaje_html = '''
+        <html>
+        <body>
+            <p><strong>No hay reservas sin pagar.</strong></p>
+        </body>
+        </html>
+        '''
 
     message = Mail(
         from_email='reservas@apartamentoscantabria.net',
@@ -67,7 +81,7 @@ def enviarMail(reservasSinPagar):
             # To('reservas@apartamentoscantabria.net'),
         ],
         subject='¡Reservas Sin Pagar!',
-        html_content=f'Ojo, las siguientes reservas están sin pagar:\n{contenido}'
+        html_content=mensaje_html
     )
     try:
         sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
