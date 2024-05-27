@@ -46,6 +46,8 @@ def reservasSemana(token):
         response.raise_for_status()
         data = response.json()
         for element in data.get("result", []):
+            if element["status"] != "modified" and element["status"] != "new":
+                continue
             if element.get("paymentStatus") != "Paid":
                 nombre = element.get("guestName", "Nombre no disponible")
                 reservasSinPagar.append(f"{nombre} aún no ha pagado")
