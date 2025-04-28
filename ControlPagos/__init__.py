@@ -83,6 +83,7 @@ def enviarMail(reservasSinPagar):
         to_emails=[
             To('diegoechaure@gmail.com'),
             To('rocio@apartamentoscantabria.net'),
+            To('reservas@apartamentoscantabria.net')
         ],
         subject='¡Reservas Sin Pagar!',
         html_content=mensaje_html
